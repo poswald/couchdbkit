@@ -37,6 +37,18 @@ from restkit import BasicAuth
 COUCHDB_DATABASES = getattr(settings, "COUCHDB_DATABASES", [])
 COUCHDB_TIMEOUT = getattr(settings, "COUCHDB_TIMEOUT", 300)
 
+class LazyConnection(object):
+    """
+    Non-data desciptor used to delay first access of the database connection
+    """
+
+    def __init__(self, server=None, dbname=None):
+        self.server = server
+        self.dbname = dbname
+
+    def __get__(self, obj, type=None):
+        return self.server.get_or_create_db(self.dbname)
+
 class CouchdbkitHandler(object):
     """ The couchdbkit handler for django """
 
@@ -71,7 +83,7 @@ class CouchdbkitHandler(object):
 
             server = Server(server_uri, resource_instance=res)
             app_label = app_name.split('.')[-1]
-            self._databases[app_label] = server.get_or_create_db(dbname)
+            self._databases[app_label] = LazyConnection(server, dbname)
     
     def sync(self, app, verbosity=2):
         """ used to sync views of all applications and eventually create
